@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Task to Obsidian Note</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 24px;
+        max-width: 640px;
+      }
+      h1 {
+        font-size: 1.4rem;
+        margin: 0 0 4px;
+      }
+      p.sub {
+        margin: 0 0 24px;
+        opacity: 0.75;
+      }
+      label.field {
+        display: block;
+        margin-bottom: 18px;
+      }
+      label.field span {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      input[type='text'] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        font: inherit;
+      }
+      small {
+        display: block;
+        margin-top: 4px;
+        opacity: 0.7;
+      }
+      label.check {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .preview {
+        font-family: ui-monospace, monospace;
+        font-size: 0.85rem;
+        padding: 10px;
+        border-radius: 6px;
+        background: rgba(127, 127, 127, 0.12);
+        word-break: break-all;
+        margin: 8px 0 24px;
+      }
+      .actions {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      #status {
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Task to Obsidian Note</h1>
+    <p class="sub">Desktop app only. Notes are written directly into your vault folder.</p>
+
+    <form id="form">
+      <label class="field">
+        <span>Vault path</span>
+        <input id="vaultPath" type="text" placeholder="/home/user/obsidian" autocomplete="off" />
+        <small>Absolute path to the vault folder. "~/" is allowed.</small>
+      </label>
+
+      <label class="field">
+        <span>Folder inside the vault</span>
+        <input id="folderTemplate" type="text" placeholder="{project}" autocomplete="off" />
+        <small>Use {project} for the project name. Subfolders allowed, e.g. "Work/{project}".</small>
+      </label>
+
+      <label class="field">
+        <span>Folder name for tasks without a project</span>
+        <input id="noProjectFolder" type="text" placeholder="No project" autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>GitLab base URL</span>
+        <input id="gitlabBaseUrl" type="text" placeholder="https://gitlab.example.com" autocomplete="off" />
+        <small>Used to build the issue link for GitLab tasks, e.g. https://gitlab.example.com.</small>
+      </label>
+
+      <label class="check">
+        <input id="appendLinkToTask" type="checkbox" />
+        Attach a link to the new note to the task
+      </label>
+
+      <div>Example path:</div>
+      <div class="preview" id="preview"></div>
+
+      <div class="actions">
+        <button type="submit" class="primary">Save</button>
+        <span id="status"></span>
+      </div>
+    </form>
+
+    <script>
+      (function () {
+        var KEY = 'settings';
+        var DEFAULTS = {
+          vaultPath: '',
+          folderTemplate: '{project}',
+          noProjectFolder: 'No project',
+          gitlabBaseUrl: '',
+          appendLinkToTask: true,
+        };
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+
+        function pad(n) {
+          return String(n).padStart(2, '0');
+        }
+
+        function updatePreview() {
+          var d = new Date();
+          var ts =
+            d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + pad(d.getHours()) + pad(d.getMinutes());
+          var vault = ($('vaultPath').value.trim() || '/path/to/vault').replace(/\/+$/, '');
+          var folder = ($('folderTemplate').value.trim() || '{project}')
+            .split('{project}')
+            .join('My Project')
+            .replace(/^\/+|\/+$/g, '');
+          $('preview').textContent = vault + '/' + (folder ? folder + '/' : '') + ts + ' - My task (2).md';
+        }
+
+        async function load() {
+          var s = Object.assign({}, DEFAULTS);
+          try {
+            var raw = await PluginAPI.loadSyncedData(KEY);
+            if (raw) s = Object.assign(s, JSON.parse(raw));
+          } catch (e) {
+            $('status').textContent = 'Could not load settings.';
+          }
+          $('vaultPath').value = s.vaultPath || '';
+          $('folderTemplate').value = s.folderTemplate || '{project}';
+          $('noProjectFolder').value = s.noProjectFolder || 'No project';
+          $('gitlabBaseUrl').value = s.gitlabBaseUrl || '';
+          $('appendLinkToTask').checked = s.appendLinkToTask !== false;
+          updatePreview();
+        }
+
+        async function save(ev) {
+          ev.preventDefault();
+          var s = {
+            vaultPath: $('vaultPath').value.trim(),
+            folderTemplate: $('folderTemplate').value.trim() || '{project}',
+            noProjectFolder: $('noProjectFolder').value.trim() || 'No project',
+            gitlabBaseUrl: $('gitlabBaseUrl').value.trim(),
+            appendLinkToTask: $('appendLinkToTask').checked,
+          };
+          if (!s.vaultPath) {
+            $('status').textContent = 'Please enter the vault path.';
+            return;
+          }
+          try {
+            await PluginAPI.persistDataSynced(JSON.stringify(s), KEY);
+            $('status').textContent = 'Saved.';
+            PluginAPI.showSnack({ msg: 'Obsidian settings saved', type: 'SUCCESS' });
+          } catch (e) {
+            $('status').textContent = 'Save failed: ' + (e && e.message ? e.message : e);
+          }
+        }
+
+        ['vaultPath', 'folderTemplate'].forEach(function (id) {
+          $(id).addEventListener('input', updatePreview);
+        });
+        $('form').addEventListener('submit', save);
+        load();
+      })();
+    </script>
+  </body>
+</html>

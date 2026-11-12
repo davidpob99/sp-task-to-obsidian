@@ -1,0 +1,17 @@
+{
+  "id": "task-to-obsidian",
+  "name": "Task to Obsidian Note",
+  "version": "0.1.0",
+  "manifestVersion": 1,
+  "minSupVersion": "20.0.0",
+  "description": "Create an Obsidian note for a task ({vault}/{project}/YYYYMMDDHHmm - {title}.md) with its GitLab issue link, and attach a link to the note on the task.",
+  "author": "David Población Criado",
+  "hooks": [],
+  "permissions": ["nodeExecution"],
+  "dataSharing": [],
+  "iFrame": true,
+  "isSkipMenuEntry": false,
+  "nodeScriptConfig": {
+    "timeout": 10000
+  }
+}
